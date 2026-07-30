@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Compass — SOP Manager (Interactive Demo)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --navy:#16224a; --navy-deep:#141f43; --navy-lift:#2b3d78; --gold:#dfab01; --gold-deep:#b98f06;
+    --gold-text:#8a6a00; --ink:#1b2231; --body:#39424f; --muted:#5e6a7b; --line:#e5e8ee; --bg:#eef0f4;
+    --card:#fff; --ok:#15794a; --ok-bg:#e8f5ee; --bad:#b93a2b; --bad-bg:#fbebe8; --warn-bg:#fef3c7; --warn-text:#92400e;
+    --hero:radial-gradient(1100px 700px at 18% -8%, #2b3d78 0%, #1c2a58 44%, #141f43 100%);
+    --blueprint:linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:'Work Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55}
+  h1{font-size:1.7rem;font-weight:800;color:var(--navy);letter-spacing:-.018em;margin:.1rem 0 .3rem}
+  h3{color:var(--navy);margin:1.2rem 0 .5rem;font-weight:700}
+  a{color:var(--navy)}
+  .hint{color:var(--muted);font-size:.9rem;margin:.2rem 0 .8rem}
+  button{font-family:inherit}
+
+  #login{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--hero);position:relative;overflow:hidden}
+  #login::before{content:"";position:absolute;inset:0;background:var(--blueprint);background-size:36px 36px;opacity:.6}
+  .login-card{position:relative;background:var(--card);border-radius:18px;padding:2.2rem;width:min(420px,92vw);box-shadow:0 24px 60px -18px rgba(0,0,0,.45);border-top:3px solid var(--gold)}
+  .brand{display:flex;align-items:center;gap:.6rem}
+  .glyph{width:34px;height:34px;border-radius:9px;background:var(--navy);display:grid;place-items:center;flex:none}
+  .glyph svg{width:22px;height:22px}
+  .wordmark{font-weight:800;font-size:1.35rem;color:var(--navy);letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:.85rem;margin:.1rem 0 1.3rem}
+  .field{margin-bottom:.8rem}
+  .field label{display:block;font-size:.8rem;color:var(--muted);margin-bottom:.25rem}
+  .field input{width:100%;padding:.6rem .7rem;border:1px solid var(--line);border-radius:9px;font-size:.95rem}
+  .btn{background:var(--navy);color:#fff;border:none;border-radius:9px;padding:.62rem 1rem;font-size:.9rem;font-weight:600;cursor:pointer}
+  .btn:hover{background:var(--navy-deep)}
+  .btn.gold{background:var(--gold);color:var(--navy)} .btn.gold:hover{background:var(--gold-deep)}
+  .btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)} .btn.ghost:hover{background:#f4f6fb}
+  .btn.wide{width:100%;margin-top:.5rem}
+  .btn.sm{padding:.34rem .7rem;font-size:.8rem}
+  .demo-badge{display:inline-block;background:var(--warn-bg);color:var(--warn-text);font-size:.72rem;font-weight:600;padding:.15rem .5rem;border-radius:999px;margin-bottom:1rem}
+
+  #app{display:none;min-height:100vh}
+  .shell{display:flex;min-height:100vh}
+  .side{width:242px;flex:none;background:var(--navy);color:#dfe3ef;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+  .side-brand{display:flex;align-items:center;gap:.55rem;padding:1rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.08)}
+  .side-brand .wordmark{color:#fff;font-size:1.15rem}
+  .side-nav{flex:1;overflow-y:auto;padding:.6rem .55rem}
+  .nav-section{margin:.5rem 0}
+  .nav-label{font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;color:#8ea0c8;padding:.4rem .6rem .2rem;display:flex;align-items:center;gap:.4rem}
+  .nav-tag{font-size:.58rem;background:rgba(255,255,255,.1);padding:.06rem .4rem;border-radius:999px;color:#c7d2ea}
+  .nav-item{display:flex;align-items:center;gap:.55rem;width:100%;text-align:left;background:none;border:none;color:#dfe3ef;padding:.5rem .6rem;border-radius:8px;font-size:.9rem;cursor:pointer}
+  .nav-item:hover{background:rgba(255,255,255,.07)}
+  .nav-item.active{background:rgba(223,171,1,.16);color:#fff;font-weight:600;box-shadow:inset 3px 0 0 var(--gold)}
+  .nav-item svg{width:17px;height:17px;flex:none;opacity:.9}
+  .side-foot{padding:.8rem 1rem;border-top:1px solid rgba(255,255,255,.08);font-size:.82rem}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--gold);color:var(--navy);display:grid;place-items:center;font-weight:700;font-size:.85rem}
+  .foot-row{display:flex;align-items:center;gap:.55rem}
+  .foot-row .who b{color:#fff;font-size:.86rem}.foot-row .who span{color:#9fb0d4;font-size:.72rem}
+  .logout{margin-top:.6rem;background:none;border:1px solid rgba(255,255,255,.2);color:#cdd6ea;border-radius:7px;padding:.32rem .6rem;font-size:.78rem;cursor:pointer;width:100%}
+
+  .body{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{display:flex;align-items:center;gap:1rem;padding:.7rem 1.4rem;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:8}
+  .topbar .spacer{flex:1}
+  .role-pick{display:flex;align-items:center;gap:.4rem;font-size:.82rem;color:var(--muted)}
+  .role-pick select{padding:.32rem .5rem;border:1px solid var(--line);border-radius:7px;font-size:.82rem}
+  .bell{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:#fff;display:grid;place-items:center;cursor:pointer;position:relative;font-size:1rem}
+  .bell .dot{position:absolute;top:6px;right:7px;width:7px;height:7px;border-radius:50%;background:var(--bad)}
+  .main{padding:1.4rem 1.6rem;max-width:1080px}
+  .demo-strip{background:#fff8e6;border-bottom:1px solid #f0e3b8;color:#7a5c00;font-size:.8rem;padding:.4rem 1.4rem;text-align:center}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.85rem;margin:.6rem 0 1.25rem}
+  .stat-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem 1.1rem;box-shadow:0 1px 3px rgba(15,23,42,.04)}
+  .stat-card.click{cursor:pointer;transition:border-color .12s,box-shadow .12s}
+  .stat-card.click:hover{border-color:var(--gold);box-shadow:0 2px 10px rgba(15,23,42,.09)}
+  .stat-card.good{border-top:3px solid #10b981}.stat-card.warn{border-top:3px solid var(--gold)}.stat-card.bad{border-top:3px solid #ef4444}
+  .stat-value{font-size:1.8rem;font-weight:700;color:var(--navy)}
+  .stat-label{font-size:.78rem;color:var(--muted)}
+  .tabs{display:flex;gap:.3rem;border-bottom:2px solid var(--line);margin:.4rem 0 1rem}
+  .tab{background:none;border:none;padding:.5rem .9rem;font-size:.92rem;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px}
+  .tab.active{color:var(--navy);font-weight:700;border-bottom-color:var(--gold)}
+  .bar{position:relative;background:#eef1f7;border-radius:999px;height:20px;overflow:hidden}
+  .bar-fill{position:absolute;inset:0;background:linear-gradient(90deg,var(--navy-lift),var(--navy));border-radius:999px}
+  .bar-label{position:absolute;right:8px;top:0;font-size:.72rem;color:#fff;line-height:20px}
+  .compliance{display:grid;grid-template-columns:1fr 1fr;gap:1rem;max-width:760px}
+  .compliance-head{font-size:.82rem;color:var(--muted);margin-bottom:.25rem}
+  .chips{display:flex;flex-wrap:wrap;gap:.4rem}
+  .chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:.2rem .6rem;font-size:.8rem}
+
+  table.grid{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  table.grid th,table.grid td{padding:.55rem .7rem;text-align:left;font-size:.86rem;border-bottom:1px solid var(--line)}
+  table.grid th{background:#f7f8fb;color:var(--muted);font-weight:600}
+  table.grid tr:last-child td{border-bottom:none}
+  table.grid tbody tr.clk{cursor:pointer}
+  table.grid tbody tr.clk:hover td{background:#f6f8fc}
+  .code-chip{background:#eef1f7;color:var(--navy);border-radius:6px;padding:.08rem .4rem;font-size:.78rem;font-weight:600;font-variant-numeric:tabular-nums}
+  select.mini{padding:.25rem .4rem;border:1px solid var(--line);border-radius:6px;font-size:.82rem}
+  .link{color:var(--navy);font-weight:600;cursor:pointer;text-decoration:none;border-bottom:1px dotted #b8c0d6}
+  .link:hover{border-bottom-style:solid}
+
+  .matrix-group{margin:1rem 0}
+  .matrix-group-head{display:flex;align-items:center;gap:.5rem;font-weight:700;padding:.45rem .7rem;border-radius:9px 9px 0 0;font-size:.92rem}
+  .matrix-group-head svg{width:18px;height:18px}
+  .matrix-group-head .count{font-weight:500;opacity:.75}
+  .matrix-group table.grid{border-radius:0 0 10px 10px;border-top:none}
+  tr.row-selected>td{background:color-mix(in srgb, var(--gold) 14%, transparent)}
+  .switch-label{display:inline-flex;align-items:center;gap:.35rem;white-space:nowrap;cursor:pointer;font-size:.83rem}
+  .chip-row{display:flex;flex-wrap:wrap;gap:.35rem;margin:.5rem 0}
+  .chip-row button{background:#fff;border:1px solid var(--line);border-radius:999px;padding:.25rem .7rem;font-size:.8rem;cursor:pointer;color:var(--body)}
+  .chip-row button.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .result-count{color:var(--muted);font-size:.82rem;margin:.4rem 0}
+  .bulk-bar{position:sticky;top:56px;z-index:6;display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin:.75rem 0;padding:.6rem .9rem;background:var(--navy);color:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(15,23,42,.18)}
+  .bulk-bar strong{margin-right:.25rem}
+  .bulk-bar button{background:#fff;color:var(--navy);border:none;border-radius:6px;padding:.3rem .7rem;font-size:.82rem;cursor:pointer}
+  .bulk-bar button.lnk{background:transparent;color:#fff;text-decoration:underline;margin-left:auto}
+  .ok-note{background:var(--ok-bg);color:var(--ok);border-radius:8px;padding:.45rem .7rem;font-size:.85rem;margin:.5rem 0}
+  .pill{font-size:.72rem;font-weight:600;padding:.15rem .55rem;border-radius:999px;white-space:nowrap}
+  .pill.good{background:#dcfce7;color:#166534}.pill.warn{background:var(--warn-bg);color:var(--warn-text)}
+  .inline-form{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.6rem 0}
+  .inline-form input,.inline-form select{padding:.4rem .55rem;border:1px solid var(--line);border-radius:7px;font-size:.85rem}
+  .home-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.4rem}
+  .home-item{display:flex;align-items:center;gap:.75rem;padding:.6rem .85rem;background:#fff;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+  .home-item:hover{border-color:var(--gold)}
+  .home-item .code{font-weight:700;color:var(--navy)} .home-item .t{flex:1;min-width:0}
+  .home-meta{font-size:.8rem;color:var(--muted)}
+  .muted{color:var(--muted)}
+  .section{margin:1.4rem 0}
+  .danger{background:var(--bad-bg)!important;color:var(--bad)!important}
+
+  /* ---- modal / popup ---- */
+  .overlay{position:fixed;inset:0;background:rgba(16,24,52,.55);backdrop-filter:blur(2px);display:none;align-items:flex-start;justify-content:center;padding:5vh 1rem;z-index:50;overflow-y:auto}
+  .overlay.show{display:flex}
+  .modal{background:#fff;border-radius:14px;width:min(680px,96vw);box-shadow:0 30px 80px -20px rgba(0,0,0,.5);border-top:3px solid var(--gold);animation:pop .16s ease-out}
+  .modal.narrow{width:min(460px,96vw)}
+  @keyframes pop{from{transform:translateY(8px) scale(.98);opacity:.4}to{transform:none;opacity:1}}
+  .modal-head{display:flex;align-items:flex-start;gap:.6rem;padding:1rem 1.2rem;border-bottom:1px solid var(--line)}
+  .modal-head h2{margin:0;font-size:1.12rem;color:var(--navy);font-weight:800;flex:1}
+  .modal-x{background:none;border:none;font-size:1.3rem;color:var(--muted);cursor:pointer;line-height:1}
+  .modal-body{padding:1.1rem 1.2rem;max-height:64vh;overflow-y:auto}
+  .modal-foot{display:flex;gap:.5rem;justify-content:flex-end;padding:.85rem 1.2rem;border-top:1px solid var(--line);background:#fafbfd;border-radius:0 0 14px 14px;flex-wrap:wrap}
+  .kv{display:grid;grid-template-columns:130px 1fr;gap:.3rem .8rem;font-size:.88rem;margin:.2rem 0 .6rem}
+  .kv b{color:var(--muted);font-weight:600}
+  .doc h4{color:var(--navy);margin:1rem 0 .3rem;font-size:.95rem}
+  .doc p,.doc li{font-size:.9rem;color:var(--body)}
+  .doc ol{margin:.2rem 0 .6rem 1.1rem}
+  .q{margin:0 0 1rem;padding:.8rem .9rem;border:1px solid var(--line);border-radius:9px}
+  .q p{margin:0 0 .5rem;font-weight:600}
+  .q label{display:block;font-size:.88rem;padding:.28rem .4rem;border-radius:6px;cursor:pointer}
+  .q label:hover{background:#f4f6fb}
+  .badge-score{font-size:2.2rem;font-weight:800;color:var(--navy)}
+
+  .toasts{position:fixed;top:14px;right:14px;z-index:70;display:flex;flex-direction:column;gap:.5rem}
+  .toast{background:var(--navy);color:#fff;padding:.6rem .9rem;border-radius:9px;font-size:.86rem;box-shadow:0 8px 24px -8px rgba(0,0,0,.5);border-left:3px solid var(--gold);max-width:340px;animation:pop .16s}
+  .sage-btn{position:fixed;right:20px;bottom:20px;z-index:40;background:var(--gold);color:var(--navy);border:none;border-radius:999px;padding:.7rem 1.1rem;font-weight:700;box-shadow:0 10px 26px -8px rgba(0,0,0,.45);cursor:pointer;display:none;align-items:center;gap:.4rem}
+  .sage-btn svg{width:18px;height:18px}
+  .sage-msg{margin:.5rem 0;padding:.6rem .8rem;border-radius:10px;font-size:.9rem;max-width:88%}
+  .sage-msg.you{background:var(--navy);color:#fff;margin-left:auto}
+  .sage-msg.sage{background:#f1f4fa;color:var(--ink)}
+  .cite{font-size:.76rem;color:var(--gold-text);margin-top:.3rem}
+  .sugg{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem}
+  .sugg button{background:#fff;border:1px solid var(--line);border-radius:999px;padding:.3rem .6rem;font-size:.8rem;cursor:pointer;text-align:left}
+  .notif{display:flex;gap:.6rem;padding:.6rem;border-radius:9px}
+  .notif:hover{background:#f6f8fc}
+  .notif .ic{width:30px;height:30px;border-radius:7px;background:#eef1f7;display:grid;place-items:center;flex:none;color:var(--navy)}
+  /* ---- point-at-element picker ---- */
+  .pick-hi{position:fixed;z-index:60;border:2px solid var(--gold);background:rgba(223,171,1,.14);border-radius:5px;pointer-events:none;display:none;box-shadow:0 0 0 2px rgba(22,34,74,.25)}
+  .pick-lbl{position:absolute;top:-22px;left:-2px;background:var(--navy);color:#fff;font-size:.7rem;padding:.12rem .45rem;border-radius:5px;white-space:nowrap;max-width:300px;overflow:hidden;text-overflow:ellipsis}
+  .pick-banner{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:61;background:var(--navy);color:#fff;padding:.5rem .95rem;border-radius:999px;font-size:.85rem;box-shadow:0 10px 26px -8px rgba(0,0,0,.5)}
+  .fb-target{display:flex;align-items:center;gap:.6rem;padding:.55rem .7rem;background:#fbf6e4;border:1px solid #ecd9a0;border-radius:9px}
+  .fb-dot{width:10px;height:10px;border-radius:50%;background:var(--gold);flex:none}
+  .fb-sel{display:block;font-size:.72rem;color:var(--muted);margin-top:.15rem;word-break:break-all}
+  .fb-tag{display:inline-block;background:#fbf1d6;color:#8a6a00;border-radius:6px;padding:.05rem .45rem;font-size:.74rem;margin-bottom:.3rem;cursor:help}
+  @media(max-width:720px){.side{position:fixed;left:-260px}.compliance{grid-template-columns:1fr}.kv{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="login-card">
+    <div class="brand"><span class="glyph"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#dfab01" stroke-width="1.6"/><path d="M12 7l2.2 4.8L12 17l-2.2-5.2z" fill="#dfab01"/></svg></span><span class="wordmark">Compass</span></div>
+    <div class="sub">SOP Manager · Hardaway</div>
+    <span class="demo-badge">Interactive demo · sample data</span>
+    <div class="field"><label>Email</label><input id="loginEmail" value="admin@hardaway.net" /></div>
+    <div class="field"><label>Password</label><input type="password" value="••••••••" /></div>
+    <button class="btn wide" onclick="signIn()">Sign in</button>
+    <p class="hint" style="margin-top:1rem">Everything is clickable — open an SOP, take a quiz, read &amp; acknowledge, or Ask&nbsp;Sage. Use <b>“Viewing as”</b> (top) to switch between Admin and a regular user.</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="shell">
+    <aside class="side">
+      <div class="side-brand"><span class="glyph"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#dfab01" stroke-width="1.6"/><path d="M12 7l2.2 4.8L12 17l-2.2-5.2z" fill="#dfab01"/></svg></span><span class="wordmark">Compass</span></div>
+      <nav class="side-nav" id="nav"></nav>
+      <div class="side-foot" id="foot"></div>
+    </aside>
+    <div class="body">
+      <div class="topbar">
+        <strong id="pageTitle" style="color:var(--navy)">Dashboard</strong>
+        <div class="spacer"></div>
+        <div class="role-pick">Viewing as
+          <select id="rolePick" onchange="setRole(this.value)">
+            <option value="ADMIN">Admin (SOP owner)</option>
+            <option value="DEV">Dev (platform)</option>
+            <option value="END_USER">Regular user</option>
+          </select>
+        </div>
+        <button class="btn ghost sm" onclick="openFeedback()" title="Send feedback to the team">✉ Feedback</button>
+        <button class="bell" title="Notifications" onclick="notifOpen()">🔔<span class="dot"></span></button>
+      </div>
+      <div class="demo-strip">Interactive demo — click SOP titles, quizzes, “Read”, the bell, and Ask&nbsp;Sage to see the real pop-ups. Sample data, no server.</div>
+      <div class="main" id="main"></div>
+    </div>
+  </div>
+</div>
+
+<button class="sage-btn" id="sageBtn" onclick="sageOpen()"><svg viewBox="0 0 24 24" fill="none" stroke="#16224a" stroke-width="1.8"><path d="M12 3a9 9 0 0 1 9 9 9 9 0 0 1-9 9H3l2-3a9 9 0 0 1 7-15z"/></svg>Ask Sage</button>
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeModal()"><div class="modal" id="modalCard"></div></div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+/* ---------------- data ---------------- */
+const FAM = {
+  'Preconstruction':{c:'#2b5aa8',bg:'#e8eefb',d:'M4 20 19 5l3 3L7 23zM14 8l2 2'},
+  'Field Operations':{c:'#2f7d4f',bg:'#e7f4ec',d:'M4 15a8 8 0 0 1 16 0M2 15h20M12 4v3'},
+  'Operations':{c:'#6b4fc0',bg:'#efe9fb',d:'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6M12 2v3M12 19v3M2 12h3M19 12h3'},
+  'Accounting':{c:'#b07c0a',bg:'#fbf1d6',d:'M12 3v18M8 7h6a2 2 0 0 1 0 4H9a2 2 0 0 0 0 4h7'},
+  'Quality Management Program (QMP)':{c:'#b0413a',bg:'#fbe9e7',d:'M12 3 5 6v5c0 5 4 8 7 10 3-2 7-5 7-10V6zM9 12l2 2 4-4'},
+  'Lessons Learned':{c:'#0e7f90',bg:'#e2f4f6',d:'M9 18h6M10 21h4M12 3a6 6 0 0 1 4 10c-1 1-1 2-1 3H9c0-1 0-2-1-3a6 6 0 0 1 4-10z'}
+};
+const famLabel = f => f==='Quality Management Program (QMP)' ? 'QMP' : f;
+function famIcon(f,s){const m=FAM[f]||{c:'#5e6a7b',d:'M4 6h16M4 12h16M4 18h16'};return `<svg viewBox="0 0 24 24" width="${s||18}" height="${s||18}" fill="none" stroke="${m.c}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${m.d}"/></svg>`}
+
+let sops = [
+  {id:'s1',code:'SOP-ACC-001',title:'Budget Line Item Editing',dept:'Accounting',ver:2,status:'Effective',required:true,quiz:true,owner:'Dana Ruiz',cycle:365,eff:'Mar 4, 2026'},
+  {id:'s2',code:'SOP-ACC-002',title:'Cost (Phase) Codes & Cost Types',dept:'Accounting',ver:1,status:'Effective',required:true,quiz:true,owner:'Dana Ruiz',cycle:365,eff:'Feb 18, 2026'},
+  {id:'s3',code:'SOP-OPS-001',title:'Prime Contract Change Orders (PCOs / PCCOs)',dept:'Operations',ver:3,status:'Effective',required:true,quiz:true,owner:'Marcus Bell',cycle:365,eff:'May 9, 2026'},
+  {id:'s4',code:'SOP-OPS-002',title:'Subcontractor Buyout & Commitments',dept:'Operations',ver:1,status:'Not yet effective',required:true,quiz:false,owner:'Marcus Bell',cycle:365,eff:'—'},
+  {id:'s5',code:'SOP-FLD-001',title:'Daily Field Reports',dept:'Field Operations',ver:1,status:'Effective',required:true,quiz:true,owner:'Priya Shah',cycle:180,eff:'Apr 1, 2026'},
+  {id:'s6',code:'SOP-FLD-002',title:'Jobsite Safety Orientation',dept:'Field Operations',ver:2,status:'Effective',required:true,quiz:true,owner:'Priya Shah',cycle:180,eff:'Jan 12, 2026'},
+  {id:'s7',code:'SOP-PRE-001',title:'Bid Day Estimate Review',dept:'Preconstruction',ver:1,status:'Effective',required:false,quiz:true,owner:'Tom Vega',cycle:365,eff:'Mar 22, 2026'},
+  {id:'s8',code:'SOP-QMP-001',title:'Quality Management Program Overview',dept:'Quality Management Program (QMP)',ver:1,status:'Effective',required:true,quiz:true,owner:'SOP Owner',cycle:365,eff:'Feb 2, 2026'},
+  {id:'s9',code:'SOP-QMP-004',title:'Pre-Installation Meetings',dept:'Quality Management Program (QMP)',ver:1,status:'Effective',required:true,quiz:true,owner:'SOP Owner',cycle:365,eff:'Feb 2, 2026'},
+  {id:'s10',code:'SOP-QMP-007',title:'Punchlist & Closeout Inspections',dept:'Quality Management Program (QMP)',ver:2,status:'Effective',required:true,quiz:false,owner:'SOP Owner',cycle:365,eff:'Apr 30, 2026'},
+  {id:'s11',code:'SOP-LL-001',title:'Post-Project Lessons Learned Review',dept:'Lessons Learned',ver:1,status:'Effective',required:false,quiz:true,owner:'Tom Vega',cycle:365,eff:'May 15, 2026'},
+  {id:'s12',code:'SOP-ACC-003',title:'Owner Pay Application (AIA G702/703)',dept:'Accounting',ver:1,status:'Archived',required:true,quiz:true,owner:'Dana Ruiz',cycle:365,eff:'—'}
+];
+let users = [
+  {id:'u1',name:'(SOP Owner)',email:'admin@hardaway.net',role:'ADMIN',dept:'Quality Management Program (QMP)',active:true},
+  {id:'u2',name:'Dana Ruiz',email:'dana.ruiz@hardaway.net',role:'END_USER',dept:'Accounting',active:true},
+  {id:'u3',name:'Marcus Bell',email:'marcus.bell@hardaway.net',role:'END_USER',dept:'Operations',active:true},
+  {id:'u4',name:'Priya Shah',email:'priya.shah@hardaway.net',role:'END_USER',dept:'Field Operations',active:true},
+  {id:'u5',name:'Tom Vega',email:'tom.vega@hardaway.net',role:'ADMIN',dept:'Preconstruction',active:true},
+  {id:'u6',name:'Old Account',email:'former@hardaway.net',role:'END_USER',dept:'Accounting',active:false}
+];
+let templates = [
+  {id:'t1',name:'Hardaway SOP Template v2',sections:9,active:true},
+  {id:'t2',name:'Hardaway SOP Template v1 (legacy)',sections:7,active:false},
+  {id:'t3',name:'QMP Inspection Template (draft)',sections:6,active:false}
+];
+const DEPTS = Object.keys(FAM);
+const ROLES = ['END_USER','ADMIN','DEV'];
+
+let feedback=[
+  {id:'f1',when:'Jul 21',from:'Dana Ruiz',role:'END_USER',cat:'Bug',page:'Library',msg:'This button didn’t update the counter until I refreshed the page.',status:'New',archived:false,target:'Button: “✓ I have read & understand this”',selector:'.modal-foot > .btn.gold'},
+  {id:'f2',when:'Jul 21',from:'Marcus Bell',role:'END_USER',cat:'Idea',page:'Training',msg:'Could we get a reminder email a few days before a required quiz is due?',status:'New',archived:false},
+  {id:'f3',when:'Jul 20',from:'Priya Shah',role:'END_USER',cat:'Bug',page:'SOP read',msg:'On my phone the SOP text runs under the header on FLD-001.',status:'New',archived:false},
+  {id:'f4',when:'Jul 20',from:'Tom Vega',role:'ADMIN',cat:'Idea',page:'SOP Repository',msg:'Add a bulk “set owner” action right here next to these.',status:'New',archived:false,target:'Button: “Make optional”',selector:'.bulk-bar > button:nth-of-type(3)'},
+  {id:'f5',when:'Jul 19',from:'Dana Ruiz',role:'END_USER',cat:'Question',page:'Dashboard',msg:'What exactly does “targeted” mean on the compliance table?',status:'New',archived:false},
+  {id:'f6',when:'Jul 18',from:'(SOP Owner)',role:'ADMIN',cat:'Idea',page:'Template',msg:'Let me clone an existing template instead of uploading a new one.',status:'New',archived:false},
+  {id:'f7',when:'Jul 17',from:'Marcus Bell',role:'END_USER',cat:'Bug',page:'Login',msg:'The SSO button spun forever once; local login worked fine.',status:'New',archived:false}
+];
+let fbSel=new Set(), fbView='active';
+let fbTarget=null, pickMode=false, pickHi=null, pickBanner=null;
+
+function sopById(id){return sops.find(s=>s.id===id);}
+function sections(s){return[
+  {h:'Purpose / Overview',b:`Establishes the standard, repeatable process for ${s.title.toLowerCase()} so every project follows the same controls and the records stay audit-ready.`},
+  {h:'Definition of Terms',b:'Defines the key terms used below so the procedure reads the same way for everyone (e.g., cost code, commitment, change event).'},
+  {h:'Responsibilities',b:'Project Manager owns the outcome; the responsible department member performs the steps; the reviewer approves before it is finalized.'},
+  {h:'Procedure',steps:['Open the record in the system of record and confirm you have the current version.','Enter the required fields following Hardaway naming and coding standards.','Attach supporting documentation and route the item for review.','The reviewer approves; the item is posted and the file is retained per policy.']},
+  {h:'Reporting',b:'Exceptions and overrides are logged and reviewed in the monthly operations review.'}
+];}
+const QUIZ = [
+  {p:'Which section explains why the SOP exists?',o:['Reporting','Purpose / Overview','Definition of Terms','Responsibilities'],a:1},
+  {p:'Before an item is posted, who must approve it?',o:['No one — it posts automatically','The reviewer','The end user who entered it','IT'],a:1},
+  {p:'Where do supporting documents go?',o:['Emailed to the PM only','Attached to the record and retained per policy','Kept on a personal drive','Discarded after posting'],a:1},
+  {p:'How often are exceptions reviewed?',o:['Never','Daily','In the monthly operations review','Only during audits'],a:2}
+];
+
+/* ---------------- state ---------------- */
+let role='ADMIN', route='dashboard', dashTab='control', famFilter='All', statusFilter='All';
+let selected=new Set(), note=null;
+let ackedUser=new Set(['s1']);   // demo end user (Accounting) already acknowledged ACC-001
+let passedUser=new Set(['s1']);
+
+/* ---------------- shell ---------------- */
+const NAV=[
+  {label:'Workspace',tag:'All users',roles:['ADMIN','DEV','END_USER'],items:[
+    {r:'dashboard',t:'Dashboard',ic:'M4 13h6V4H4zM14 20h6v-9h-6zM14 4v5h6V4zM4 20h6v-5H4z'},
+    {r:'library',t:'Library',ic:'M4 5h10v14H4zM14 7h6v12h-6'},
+    {r:'training',t:'Training',ic:'M12 4 2 8l10 4 10-4zM6 11v4c0 1.5 3 3 6 3s6-1.5 6-3v-4'}]},
+  {label:'Document control',tag:'Admin',roles:['ADMIN','DEV'],items:[
+    {r:'sops',t:'SOP Repository',ic:'M6 3h9l4 4v14H6zM14 3v5h5'},
+    {r:'template',t:'Template',ic:'M5 4h14v4H5zM5 10h9v10H5zM16 10h3v10h-3'},
+    {r:'users',t:'Users',ic:'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6M2 20a7 7 0 0 1 14 0M17 11a3 3 0 0 0 0-6M18 20a7 7 0 0 0 4-2'}]},
+  {label:'Platform',tag:'Dev',roles:['DEV'],items:[
+    {r:'feedback',t:'Feedback',ic:'M4 5h16v11H8l-4 4z'},
+    {r:'agents',t:'Agents',ic:'M12 3a3 3 0 0 1 3 3v1h2a2 2 0 0 1 2 2v2h-1a2 2 0 0 0 0 4h1v2a2 2 0 0 1-2 2h-2v-1a2 2 0 0 0-4 0v1H7a2 2 0 0 1-2-2v-2H4a2 2 0 0 0 0-4h1V9a2 2 0 0 1 2-2h2V6a3 3 0 0 1 3-3z'}]}
+];
+function cu(){return {ADMIN:{n:'SOP Program Owner',r:'Administrator'},DEV:{n:'Platform (Dev)',r:'Developer'},END_USER:{n:'Dana Ruiz',r:'Accounting'}}[role];}
+function renderNav(){
+  document.getElementById('nav').innerHTML=NAV.filter(s=>s.roles.includes(role)).map(sec=>`
+    <div class="nav-section"><div class="nav-label">${sec.label}<span class="nav-tag">${sec.tag}</span></div>
+    ${sec.items.map(it=>{const nb=it.r==='feedback'?feedback.filter(f=>!f.archived&&f.status==='New').length:0;const badge=nb?` <span class="nav-tag" style="background:var(--gold);color:var(--navy);margin-left:auto">${nb}</span>`:'';return `<button class="nav-item ${route===it.r?'active':''}" onclick="go('${it.r}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${it.ic}"/></svg>${it.t}${badge}</button>`}).join('')}</div>`).join('');
+  const u=cu();
+  document.getElementById('foot').innerHTML=`<div class="foot-row"><span class="avatar">${u.n[0]}</span><div class="who"><b>${u.n}</b><br><span>${u.r}</span></div></div><button class="logout" onclick="signOut()">Sign out</button>`;
+}
+const TITLES={dashboard:'Dashboard',library:'Library',training:'Training',sops:'SOP Repository',template:'Master Template',users:'Users',agents:'Agents',feedback:'Feedback'};
+function allowed(){return NAV.filter(s=>s.roles.includes(role)).flatMap(s=>s.items.map(i=>i.r));}
+function go(r){if(!allowed().includes(r))r='dashboard';route=r;note=null;render();}
+function setRole(v){role=v;if(!allowed().includes(route))route='dashboard';selected=new Set();render();}
+function render(){
+  if(!allowed().includes(route))route='dashboard';
+  document.getElementById('rolePick').value=role;
+  document.getElementById('pageTitle').textContent=TITLES[route]||'';
+  renderNav();
+  const m=document.getElementById('main');
+  if(route==='dashboard')m.innerHTML=role==='END_USER'?userHome():adminDash();
+  else if(route==='sops')m.innerHTML=sopRepo();
+  else if(route==='users')m.innerHTML=usersPage();
+  else if(route==='template')m.innerHTML=templatePage();
+  else if(route==='training')m.innerHTML=trainingPage();
+  else if(route==='library')m.innerHTML=libraryPage();
+  else if(route==='agents')m.innerHTML=agentsPage();
+  else if(route==='feedback')m.innerHTML=feedbackPage();
+}
+
+/* ---------------- modal + toast ---------------- */
+function modal(html,narrow){document.getElementById('modalCard').className='modal'+(narrow?' narrow':'');document.getElementById('modalCard').innerHTML=html;document.getElementById('overlay').classList.add('show');}
+function closeModal(){document.getElementById('overlay').classList.remove('show');}
+function shell(title,body,foot){return `<div class="modal-head"><h2>${title}</h2><button class="modal-x" onclick="closeModal()">×</button></div><div class="modal-body">${body}</div>${foot?`<div class="modal-foot">${foot}</div>`:''}`;}
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.getElementById('toasts').appendChild(t);setTimeout(()=>t.remove(),2800);}
+function confirmModal(title,msg,onOk,okLabel,danger){
+  window.__ok=onOk;
+  modal(shell(title,`<p style="font-size:.92rem;color:var(--body)">${msg}</p>`,
+    `<button class="btn ghost sm" onclick="closeModal()">Cancel</button><button class="btn sm ${danger?'':'gold'}" style="${danger?'background:var(--bad);color:#fff':''}" onclick="(window.__ok||function(){})();">${okLabel||'Confirm'}</button>`),true);
+}
+
+/* ---------------- dashboards ---------------- */
+function adminDash(){
+  const eff=sops.filter(s=>s.status==='Effective').length, drafts=sops.filter(s=>s.status==='Not yet effective').length, arch=sops.filter(s=>s.status==='Archived').length;
+  const tabs=`<div class="tabs"><button class="tab ${dashTab==='control'?'active':''}" onclick="dashTab='control';render()">Control Center</button><button class="tab ${dashTab==='oversight'?'active':''}" onclick="dashTab='oversight';render()">Oversight</button></div>`;
+  let body;
+  if(dashTab==='control'){
+    const byDept={};sops.forEach(s=>byDept[s.dept]=(byDept[s.dept]||0)+1);
+    body=`<h3>Library health</h3><div class="stat-grid">
+      <div class="stat-card good click" onclick="go('sops')"><div class="stat-value">${eff}</div><div class="stat-label">Effective SOPs</div></div>
+      <div class="stat-card click" onclick="go('sops')"><div class="stat-value">${sops.length}</div><div class="stat-label">Total SOPs</div></div>
+      <div class="stat-card"><div class="stat-value">${drafts}</div><div class="stat-label">In progress</div></div>
+      <div class="stat-card warn click" onclick="toast('2 open conflict flags — opening review queue')"><div class="stat-value">2</div><div class="stat-label">Open flags</div></div>
+      <div class="stat-card"><div class="stat-value">${arch}</div><div class="stat-label">Archived</div></div>
+      <div class="stat-card bad click" onclick="dashTab='oversight';render()"><div class="stat-value">1</div><div class="stat-label">Overdue review</div></div></div>
+      <h3>Compliance (effective versions)</h3><div class="compliance">
+      <div><div class="compliance-head">Acknowledged — 148 / 172</div><div class="bar"><div class="bar-fill" style="width:86%"></div><span class="bar-label">86%</span></div></div>
+      <div><div class="compliance-head">Trained (≥80%) — 121 / 172</div><div class="bar"><div class="bar-fill" style="width:70%"></div><span class="bar-label">70%</span></div></div></div>
+      <h3>By department</h3><div class="chips">${Object.entries(byDept).map(([d,n])=>`<span class="chip">${famLabel(d)}: <b>${n}</b></span>`).join('')}</div>
+      <h3>Per-SOP acknowledgment &amp; training <span class="hint" style="font-weight:400">— click a row</span></h3>
+      <table class="grid"><thead><tr><th>Code</th><th>Title</th><th>Targeted</th><th>Acknowledged</th><th>Trained</th></tr></thead><tbody>
+      ${sops.filter(s=>s.status==='Effective').slice(0,6).map((s,i)=>{const t=[24,31,18,22,15,12][i],a=[22,28,18,19,12,11][i],tr=[18,25,14,17,9,8][i];return `<tr class="clk" onclick="sopDetail('${s.id}')"><td><span class="code-chip">${s.code}</span></td><td>${s.title}</td><td>${t}</td><td>${a}/${t}</td><td>${tr}/${t}</td></tr>`}).join('')}
+      </tbody></table>`;
+  } else {
+    body=`<h3>Review queue (Lifecycle Agent)</h3>
+      <table class="grid"><thead><tr><th>Code</th><th>Title</th><th>Reason</th><th>Detail</th></tr></thead><tbody>
+      <tr class="clk" onclick="sopDetail('s6')"><td><span class="code-chip">SOP-FLD-002</span></td><td>Jobsite Safety Orientation</td><td><span class="pill warn">OVERDUE</span></td><td>Review cycle elapsed 12 days ago</td></tr>
+      <tr class="clk" onclick="sopDetail('s10')"><td><span class="code-chip">SOP-QMP-007</span></td><td>Punchlist &amp; Closeout Inspections</td><td><span class="pill warn">DUE SOON</span></td><td>Due in 9 days</td></tr></tbody></table>
+      <h3>Compliance (Audit Agent) <button class="btn gold sm" onclick="toast('Export started — compliance_report.csv')">⬇ Export CSV</button></h3>
+      <table class="grid"><thead><tr><th>Code</th><th>Title</th><th>Targeted</th><th>Ack</th><th>Trained</th><th>Gaps</th></tr></thead><tbody>
+      ${sops.filter(s=>s.status==='Effective').slice(0,5).map((s,i)=>{const t=[24,31,18,22,15][i],a=[22,28,18,19,12][i],tr=[18,25,14,17,9][i];return `<tr class="clk" onclick="sopDetail('${s.id}')"><td><span class="code-chip">${s.code}</span></td><td>${s.title}</td><td>${t}</td><td>${a}/${t}</td><td>${tr}/${t}</td><td>${t-a} / ${t-tr}</td></tr>`}).join('')}
+      </tbody></table>`;
+  }
+  return `<h1>Dashboard</h1><p class="hint">Signed in as <b>${cu().n}</b> — document control + user management.</p>${tabs}${body}`;
+}
+function userHome(){
+  const dept='Accounting';
+  const mine=sops.filter(s=>s.dept===dept&&s.status==='Effective');
+  const toAck=mine.filter(s=>!ackedUser.has(s.id));
+  const training=mine.filter(s=>s.required&&s.quiz);
+  const row=(s,right,act)=>`<li><div class="home-item" onclick="${act}"><span class="code">${s.code}</span><span class="t">${s.title}</span><span class="home-meta">v${s.ver}</span>${right}</div></li>`;
+  return `<h1>Dashboard</h1><p class="hint">Signed in as <b>Dana Ruiz</b> — Accounting.</p>
+    <div class="stat-grid">
+      <div class="stat-card ${toAck.length?'warn':'good'} click" onclick="go('library')"><div class="stat-value">${toAck.length}</div><div class="stat-label">Awaiting your acknowledgment</div></div>
+      <div class="stat-card click" onclick="go('library')"><div class="stat-value">${mine.length}</div><div class="stat-label">Accounting SOPs</div></div>
+      <div class="stat-card ${passedUser.size<=training.length&&[...training].some(s=>!passedUser.has(s.id))?'warn':'good'} click" onclick="go('training')"><div class="stat-value">${training.filter(s=>passedUser.has(s.id)).length}/${training.length}</div><div class="stat-label">Required training passed</div></div></div>
+    <div class="section"><h3>Needs your acknowledgment</h3><ul class="home-list">${toAck.length?toAck.map(s=>row(s,'<span class="pill warn">Review &amp; acknowledge</span>',`readSop('${s.id}')`)).join(''):'<p class="muted">✓ All caught up.</p>'}</ul></div>
+    <div class="section"><h3>Recently updated</h3><ul class="home-list">${sops.filter(s=>s.status==='Effective').slice(0,4).map(s=>row(s,`<span class="home-meta">${famLabel(s.dept)}</span>`,`readSop('${s.id}')`)).join('')}</ul></div>
+    <div class="section"><h3>Required training</h3><ul class="home-list">${training.map(s=>row(s,passedUser.has(s.id)?'<span class="pill good">✓ Passed</span>':'<span class="pill warn">Take quiz</span>',`quizModal('${s.id}')`)).join('')}</ul></div>`;
+}
+
+/* ---------------- SOP repository ---------------- */
+function sopRepo(){
+  let rows=sops.filter(s=>(famFilter==='All'||s.dept===famFilter)&&(statusFilter==='All'||s.status===statusFilter));
+  const groups={};rows.forEach(s=>{(groups[s.dept]=groups[s.dept]||[]).push(s)});
+  const order=Object.keys(FAM);
+  const gk=Object.keys(groups).sort((a,b)=>(order.indexOf(a)+1||99)-(order.indexOf(b)+1||99));
+  const bulk=selected.size?`<div class="bulk-bar"><strong>${selected.size} selected</strong>
+    <button onclick="bulkQuiz()">Write new quizzes</button><button onclick="bulkReq(true)">Require training</button>
+    <button onclick="bulkReq(false)">Make optional</button><button onclick="askArchive()">Archive</button>
+    <button onclick="bulkStatus('Effective')">Unarchive</button><button class="lnk" onclick="selected=new Set();render()">Clear</button></div>`:'';
+  const filters=`<div class="chip-row">${['All',...order].map(f=>`<button class="${famFilter===f?'active':''}" onclick="famFilter='${f}';render()">${famLabel(f)}</button>`).join('')}</div>
+    <div class="chip-row">${['All','Effective','Not yet effective','Archived'].map(s=>`<button class="${statusFilter===s?'active':''}" onclick="statusFilter='${s}';render()">${s}</button>`).join('')}</div>`;
+  const table=gk.map(f=>{const m=FAM[f]||{c:'#5e6a7b',bg:'#eceff4'};const ids=groups[f].map(s=>s.id);const all=ids.every(id=>selected.has(id));
+    return `<div class="matrix-group"><div class="matrix-group-head" style="color:${m.c};background:${m.bg}">${famIcon(f)}${famLabel(f)} <span class="count">· ${groups[f].length}</span></div>
+    <table class="grid"><thead><tr><th style="width:30px"><input type="checkbox" ${all?'checked':''} onclick="groupSel(['${ids.join("','")}'],this.checked)"></th><th>Title</th><th>Code</th><th>Dept</th><th>Status</th><th>Training required</th></tr></thead><tbody>
+    ${groups[f].map(s=>`<tr class="${selected.has(s.id)?'row-selected':''}"><td><input type="checkbox" ${selected.has(s.id)?'checked':''} onclick="rowSel('${s.id}')"></td>
+      <td><span class="link" onclick="sopDetail('${s.id}')">${s.title}</span></td><td><span class="code-chip">${s.code}</span></td><td>${famLabel(s.dept)}</td><td>${s.status}</td>
+      <td><label class="switch-label"><input type="checkbox" ${s.required?'checked':''} onclick="toggleReq('${s.id}')"> ${s.required?'Required':'Optional'}</label></td></tr>`).join('')}
+    </tbody></table></div>`;}).join('');
+  return `<h1>SOP Repository</h1><p class="hint">Grouped by family. <b>Click a title</b> to open the SOP, or <b>select rows</b> for a bulk action.</p>
+    <div class="inline-form"><button class="btn" onclick="createSop()">+ Create SOP</button><span class="hint">or select rows below for bulk actions</span></div>
+    ${filters}<p class="result-count">${rows.length} of ${sops.length} SOPs shown</p>${bulk}${note?`<p class="ok-note">${note}</p>`:''}${table}`;
+}
+function rowSel(id){selected.has(id)?selected.delete(id):selected.add(id);render();}
+function groupSel(ids,on){ids.forEach(id=>on?selected.add(id):selected.delete(id));render();}
+function toggleReq(id){const s=sopById(id);s.required=!s.required;toast(`${s.code}: training ${s.required?'required':'optional'}`);render();}
+function bulkReq(v){const n=selected.size;[...selected].forEach(id=>{const s=sopById(id);if(s)s.required=v;});note=`${v?'Required training set':'Made optional'} for ${n} SOP(s).`;render();}
+function bulkStatus(st){const n=selected.size;[...selected].forEach(id=>{const s=sopById(id);if(s)s.status=st;});note=`${st==='Archived'?'Archived':'Unarchived'} ${n} SOP(s).`;selected=new Set();render();}
+function askArchive(){const n=selected.size;confirmModal('Archive SOPs?',`Archive ${n} selected SOP(s)? They leave the end-user library until unarchived.`,()=>{closeModal();bulkStatus('Archived');toast('Archived '+n+' SOP(s)');},'Archive',true);}
+function bulkQuiz(){const t=[...selected].map(sopById).filter(s=>s&&s.status!=='Not yet effective');if(!t.length){toast('No effective SOPs selected — nothing to quiz');return;}
+  confirmModal('Write new quizzes?',`Generate fresh knowledge-check quizzes for <b>${t.length}</b> effective SOP(s)? This replaces existing quiz content (recorded attempts stay linked).`,()=>{t.forEach(s=>s.quiz=true);note=`Writing quizzes: ${t.length}/${t.length} done — fresh quizzes generated by the Training Agent.`;selected=new Set();closeModal();render();toast('Quizzes generated for '+t.length+' SOP(s)');},'Write quizzes');}
+
+/* ---------------- SOP detail / read / quiz ---------------- */
+function sopDetail(id){const s=sopById(id);const admin=role!=='END_USER';
+  const secHtml=`<div class="doc">${sections(s).map(x=>`<h4>${x.h}</h4>${x.steps?`<ol>${x.steps.map(st=>`<li>${st}</li>`).join('')}</ol>`:`<p>${x.b}</p>`}`).join('')}</div>`;
+  const foot=admin
+    ? `<button class="btn ghost sm" onclick="toast('Opening version history (demo)')">Version history</button><button class="btn ghost sm" onclick="regenQuiz('${id}')">Generate quiz</button><button class="btn gold sm" onclick="readSop('${id}')">Open reader</button>`
+    : `<button class="btn ghost sm" onclick="closeModal()">Close</button><button class="btn gold sm" onclick="readSop('${id}')">Read &amp; acknowledge</button>`;
+  modal(shell(`${s.code} — ${s.title}`,
+    `<div class="kv"><b>Family</b><span>${famIcon(s.dept,14)} ${famLabel(s.dept)}</span><b>Status</b><span>${s.status}</span><b>Current version</b><span>v${s.ver} · effective ${s.eff}</span><b>Owner</b><span>${s.owner}</span><b>Review cycle</b><span>${s.cycle} days</span><b>Training</b><span>${s.required?'Required':'Optional'} · quiz ${s.quiz?'ready':'not written'}</span></div>
+     <h4 style="color:var(--navy);margin:.4rem 0">Rendered content (preview)</h4>${secHtml}`,foot));
+}
+function regenQuiz(id){const s=sopById(id);s.quiz=true;closeModal();toast(`${s.code}: new quiz written by the Training Agent`);render();}
+function readSop(id){const s=sopById(id);const acked=ackedUser.has(id);
+  const secHtml=`<div class="doc"><p class="muted" style="margin-top:0">${s.code} · v${s.ver} · effective ${s.eff}</p>${sections(s).map(x=>`<h4>${x.h}</h4>${x.steps?`<ol>${x.steps.map(st=>`<li>${st}</li>`).join('')}</ol>`:`<p>${x.b}</p>`}`).join('')}</div>`;
+  const foot=(role==='END_USER')
+    ? (acked?`<span class="pill good" style="align-self:center;margin-right:auto">✓ You acknowledged this version</span><button class="btn ghost sm" onclick="closeModal()">Close</button>`
+            :`<button class="btn ghost sm" onclick="closeModal()">Close</button><button class="btn gold sm" onclick="doAck('${id}')">✓ I have read &amp; understand this</button>`)
+    : `<button class="btn ghost sm" onclick="toast('Download .docx (demo)')">Download .docx</button><button class="btn gold sm" onclick="closeModal()">Close</button>`;
+  modal(shell(`${s.title}`,secHtml,foot));
+}
+function doAck(id){ackedUser.add(id);closeModal();toast('Acknowledgment recorded — thank you');render();}
+function quizModal(id){const s=sopById(id);
+  if(!s.quiz){toast('No quiz written for this SOP yet');return;}
+  const body=`<p class="hint" style="margin-top:0">${s.code} — knowledge check · pass mark 80%</p>`+
+    QUIZ.map((q,i)=>`<div class="q"><p>${i+1}. ${q.p}</p>${q.o.map((op,j)=>`<label><input type="radio" name="q${i}" value="${j}"> ${op}</label>`).join('')}</div>`).join('');
+  modal(shell(`${s.title} — Quiz`,body,`<button class="btn ghost sm" onclick="closeModal()">Cancel</button><button class="btn gold sm" onclick="gradeQuiz('${id}')">Submit answers</button>`));
+}
+function gradeQuiz(id){const s=sopById(id);let correct=0,answered=0;
+  QUIZ.forEach((q,i)=>{const sel=document.querySelector(`input[name=q${i}]:checked`);if(sel){answered++;if(+sel.value===q.a)correct++;}});
+  const score=Math.round(100*correct/QUIZ.length);const pass=score>=80;
+  if(pass&&role==='END_USER')passedUser.add(id);
+  modal(shell('Quiz result',
+    `<div style="text-align:center;padding:.5rem 0"><div class="badge-score">${score}%</div>
+     <p style="margin:.2rem 0"><span class="pill ${pass?'good':'warn'}">${pass?'✓ Passed':'Not passed — 80% needed'}</span></p>
+     <p class="hint">${correct} of ${QUIZ.length} correct${answered<QUIZ.length?` · ${QUIZ.length-answered} left blank`:''}. ${pass?'Your training is recorded against this SOP.':'You can retake it any time.'}</p></div>`,
+    `${pass?'':`<button class="btn ghost sm" onclick="quizModal('${id}')">Retake</button>`}<button class="btn gold sm" onclick="closeModal();render()">Done</button>`),true);
+}
+
+/* ---------------- create modals ---------------- */
+function createSop(){
+  modal(shell('Create SOP',
+    `<div class="kv" style="grid-template-columns:1fr"><label class="hint" style="margin:0">Family</label><select class="mini" id="nf">${DEPTS.map(d=>`<option>${famLabel(d)}</option>`).join('')}</select>
+     <label class="hint" style="margin:.4rem 0 0">Title</label><input id="nt" placeholder="e.g. Submittal Log Management" style="padding:.45rem;border:1px solid var(--line);border-radius:7px">
+     <p class="hint">The code (e.g. SOP-OPS-003) is generated automatically for the family.</p></div>`,
+    `<button class="btn ghost sm" onclick="closeModal()">Cancel</button><button class="btn gold sm" onclick="doCreateSop()">Create</button>`),true);
+}
+function doCreateSop(){const t=document.getElementById('nt').value||'Untitled SOP';closeModal();toast(`Created “${t}” — draft ready to author`);}
+
+/* ---------------- users / template / simple ---------------- */
+function usersPage(){
+  return `<h1>Users</h1>
+    <div class="inline-form"><button class="btn" onclick="addUser()">+ Add user</button><span class="hint">department drives what each person sees &amp; their required training</span></div>
+    <table class="grid"><thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Department</th><th>Active</th><th></th></tr></thead><tbody>
+    ${users.map(u=>`<tr style="opacity:${u.active?1:.55}"><td>${u.email}</td><td>${u.name}</td>
+      <td><select class="mini" onchange="setUser('${u.id}','role',this.value)">${ROLES.map(r=>`<option ${u.role===r?'selected':''}>${r}</option>`).join('')}</select></td>
+      <td><select class="mini" onchange="setUser('${u.id}','dept',this.value)"><option value="">— none —</option>${DEPTS.map(d=>`<option value="${d}" ${u.dept===d?'selected':''}>${famLabel(d)}</option>`).join('')}</select></td>
+      <td>${u.active?'yes':'no'}</td><td><button class="btn ghost sm" onclick="setUser('${u.id}','active',${!u.active})">${u.active?'Deactivate':'Reactivate'}</button></td></tr>`).join('')}
+    </tbody></table>`;
+}
+function setUser(id,k,v){const u=users.find(x=>x.id===id);if(k==='role')u.role=v;if(k==='dept')u.dept=v;if(k==='active')u.active=v;toast('Saved — '+u.email);render();}
+function addUser(){modal(shell('Add user',
+  `<div class="kv" style="grid-template-columns:1fr">
+   <input placeholder="Email" style="padding:.45rem;border:1px solid var(--line);border-radius:7px">
+   <input placeholder="Full name" style="padding:.45rem;border:1px solid var(--line);border-radius:7px;margin-top:.4rem">
+   <select class="mini" style="margin-top:.4rem"><option>END_USER</option><option>ADMIN</option><option>DEV</option></select>
+   <select class="mini" style="margin-top:.4rem"><option>— Department —</option>${DEPTS.map(d=>`<option>${famLabel(d)}</option>`).join('')}</select></div>`,
+  `<button class="btn ghost sm" onclick="closeModal()">Cancel</button><button class="btn gold sm" onclick="closeModal();toast('User invited (demo)')">Add user</button>`),true);}
+
+function templatePage(){const active=templates.find(t=>t.active);
+  return `<h1>Master Template</h1><p class="hint">The gold-standard structure. The Template/Quality Agent enforces it and renders every published SOP through it.</p>
+    <h3>Active template</h3><div class="stat-card" style="max-width:520px"><b>${active.name}</b><p class="hint" style="margin:.3rem 0 0">${active.sections} required sections · Purpose, Definition of Terms, Responsibilities, Procedure, Reporting, Revision History…</p></div>
+    <h3>All templates</h3><table class="grid"><thead><tr><th>Name</th><th>Sections</th><th>Active</th><th></th></tr></thead><tbody>
+    ${templates.map(t=>`<tr><td>${t.name}</td><td>${t.sections}</td><td>${t.active?'✓':''}</td><td>${t.active?'<span class="hint">Active — activate another to delete</span>':`<button class="btn ghost sm" onclick="actTpl('${t.id}')">Make active</button> <button class="btn sm danger" onclick="askDelTpl('${t.id}')">Delete</button>`}</td></tr>`).join('')}
+    </tbody></table>`;
+}
+function actTpl(id){templates.forEach(t=>t.active=t.id===id);toast('Template activated');render();}
+function askDelTpl(id){const t=templates.find(x=>x.id===id);confirmModal('Delete template?',`Delete “${t.name}”? This can’t be undone.`,()=>{templates=templates.filter(x=>x.id!==id);closeModal();toast('Template deleted');render();},'Delete',true);}
+
+function trainingPage(){const list=sops.filter(s=>s.status==='Effective'&&s.quiz).slice(0,6);
+  return `<h1>Training</h1><p class="hint">Knowledge checks for your department’s SOPs — pass mark 80%. <b>Click “Take quiz”.</b></p>
+    <ul class="home-list">${list.map(s=>`<li><div class="home-item" onclick="quizModal('${s.id}')"><span class="code">${s.code}</span><span class="t">${s.title} — Knowledge Check</span>${passedUser.has(s.id)?'<span class="pill good">✓ Passed</span>':'<span class="pill warn">Take quiz</span>'}</div></li>`).join('')}</ul>`;
+}
+function libraryPage(){
+  return `<h1>Library</h1><p class="hint">Read effective SOPs and confirm you’ve read them. <b>Click “Read”.</b> Or Ask <b>Sage</b> (bottom-right).</p>
+    <table class="grid"><thead><tr><th>Code</th><th>Title</th><th>Dept</th><th>Ver</th><th></th></tr></thead><tbody>
+    ${sops.filter(s=>s.status==='Effective').map(s=>`<tr class="clk" onclick="readSop('${s.id}')"><td><span class="code-chip">${s.code}</span></td><td>${s.title}</td><td>${famLabel(s.dept)}</td><td>v${s.ver}</td><td>${ackedUser.has(s.id)?'<span class="pill good">✓ Acked</span>':'<button class="btn ghost sm" onclick="event.stopPropagation();readSop(\''+s.id+'\')">Read</button>'}</td></tr>`).join('')}
+    </tbody></table>`;
+}
+function agentsPage(){const A=[['Discrepancy Agent','Changelog diff + whole-library conflict detection. Flags a human; never auto-rejects.'],['Template / Quality Agent','Structural + quality conformance; renders to the master template.'],['Help Agent (Sage)','RAG over SOP content; cites SOP code + section or says “I don’t have that.”'],['Training Agent','Generates a module + knowledge-check quiz from SOP content.']];
+  return `<h1>Agents</h1><p class="hint">The four assistants. Each has a deterministic fallback so a failed model call never blocks publishing.</p>
+    <div class="stat-grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">${A.map(a=>`<div class="stat-card"><b style="color:var(--navy)">${a[0]}</b><p class="hint" style="margin:.35rem 0 .5rem">${a[1]}</p><span class="pill good">Built</span></div>`).join('')}</div>`;
+}
+
+/* ---------------- Feedback inbox (Dev view) ---------------- */
+function fbCatPill(c){const m={Bug:'#fde2e0;color:#9a2b22',Idea:'#e6effb;color:#1f4e8a',Question:'#eef1f7;color:#3a4a6b'}[c]||'#eef1f7;color:#3a4a6b';return `<span class="pill" style="background:${m}">${c}</span>`;}
+function fbStatPill(s){return s==='Process'?'<span class="pill good">Process</span>':s==='Ignore'?'<span class="pill" style="background:#eceff4;color:#5e6a7b">Ignore</span>':'<span class="pill warn">New</span>';}
+function feedbackPage(){
+  const active=feedback.filter(f=>!f.archived), archived=feedback.filter(f=>f.archived);
+  const list=fbView==='active'?active:archived;
+  const nNew=active.filter(f=>f.status==='New').length, nProc=active.filter(f=>f.status==='Process').length, nIgn=active.filter(f=>f.status==='Ignore').length;
+  const ids=list.map(f=>f.id); const all=ids.length&&ids.every(id=>fbSel.has(id));
+  const bulk=fbSel.size?`<div class="bulk-bar"><strong>${fbSel.size} selected</strong>
+    <button onclick="fbMark('Process')">Mark process</button><button onclick="fbMark('Ignore')">Mark ignore</button>
+    <button class="lnk" onclick="fbSel=new Set();render()">Clear</button></div>`:'';
+  const rows=list.map(f=>`<tr class="${fbSel.has(f.id)?'row-selected':''}">
+      <td><input type="checkbox" ${fbSel.has(f.id)?'checked':''} onclick="fbRow('${f.id}')"></td>
+      <td class="home-meta" style="white-space:nowrap">${f.when}</td>
+      <td>${f.from}<div class="home-meta">${f.role}</div></td>
+      <td>${fbCatPill(f.cat)}</td><td class="home-meta">${f.page}</td>
+      <td style="max-width:340px">${f.target?`<div class="fb-tag" title="${(f.selector||'').replace(/"/g,'&quot;')}">🎯 ${f.target}</div>`:''}${f.msg}</td><td>${fbStatPill(f.status)}</td></tr>`).join('');
+  return `<h1>Feedback</h1><p class="hint">Everything sent through <b>“✉ Feedback”</b> lands here for the dev team to triage — the 🎯 tag shows the exact element the sender pointed at. Select rows → mark <b>Process</b> or <b>Ignore</b> → export the process list → archive the triaged items to storage.</p>
+    <div class="stat-grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr))">
+      <div class="stat-card warn"><div class="stat-value">${nNew}</div><div class="stat-label">New</div></div>
+      <div class="stat-card good"><div class="stat-value">${nProc}</div><div class="stat-label">Marked process</div></div>
+      <div class="stat-card"><div class="stat-value">${nIgn}</div><div class="stat-label">Marked ignore</div></div>
+      <div class="stat-card"><div class="stat-value">${archived.length}</div><div class="stat-label">Archived</div></div></div>
+    <div class="inline-form">
+      <div class="chip-row" style="margin:0"><button class="${fbView==='active'?'active':''}" onclick="fbView='active';fbSel=new Set();render()">Active inbox</button><button class="${fbView==='archived'?'active':''}" onclick="fbView='archived';fbSel=new Set();render()">Archived (storage)</button></div>
+      <span style="flex:1"></span>
+      ${fbView==='active'?`<button class="btn ghost sm" onclick="fbExport()">⬇ Export processed (CSV)</button><button class="btn sm gold" onclick="fbArchive()">Archive marked → storage</button>`:''}
+    </div>${bulk}
+    <table class="grid"><thead><tr><th style="width:30px"><input type="checkbox" ${all?'checked':''} onclick="fbAll(this.checked)"></th><th>When</th><th>From</th><th>Type</th><th>Page</th><th>Feedback</th><th>Status</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="7" class="muted" style="text-align:center;padding:1.1rem">Nothing here yet.</td></tr>'}</tbody></table>`;
+}
+function fbRow(id){fbSel.has(id)?fbSel.delete(id):fbSel.add(id);render();}
+function fbAll(on){feedback.filter(f=>fbView==='active'?!f.archived:f.archived).forEach(f=>on?fbSel.add(f.id):fbSel.delete(f.id));render();}
+function fbMark(st){const n=fbSel.size;[...fbSel].forEach(id=>{const f=feedback.find(x=>x.id===id);if(f)f.status=st;});fbSel=new Set();toast(`Marked ${n} as ${st}`);render();}
+function fbExport(){
+  const rows=feedback.filter(f=>!f.archived&&f.status==='Process');
+  if(!rows.length){toast('Nothing marked “Process” to export yet');return;}
+  const esc=v=>`"${String(v).replace(/"/g,'""')}"`;
+  const csv=[['When','From','Role','Type','Page','Target element','Selector','Status','Feedback'].join(','),
+    ...rows.map(f=>[f.when,f.from,f.role,f.cat,f.page,f.target||'',f.selector||'',f.status,f.msg].map(esc).join(','))].join('\r\n');
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  const a=document.createElement('a');a.href=url;a.download='compass-feedback-processed.csv';a.click();URL.revokeObjectURL(url);
+  toast(`Exported ${rows.length} processed item(s) to CSV`);
+}
+function fbArchive(){
+  const marked=feedback.filter(f=>!f.archived&&(f.status==='Process'||f.status==='Ignore'));
+  if(!marked.length){toast('Nothing marked to archive yet — mark Process or Ignore first');return;}
+  confirmModal('Archive marked feedback?',`Move <b>${marked.length}</b> triaged item(s) (Process + Ignore) out of the active inbox into storage? In the deployed app this writes them to Azure Blob storage; anything still <b>New</b> stays in the inbox.`,()=>{marked.forEach(f=>f.archived=true);fbSel=new Set();closeModal();toast(`Archived ${marked.length} item(s) to storage`);render();},'Archive to storage');
+}
+function openFeedback(target){
+  fbTarget = target || null;
+  const tgt = fbTarget
+    ? `<div class="fb-target"><span class="fb-dot"></span><div style="flex:1"><b style="font-size:.82rem">About this element</b><div class="home-meta">${fbTarget.label}</div><code class="fb-sel">${fbTarget.selector}</code></div><button class="btn ghost sm" onclick="startPick()">Change</button></div>`
+    : `<button class="btn ghost sm" style="width:100%" onclick="startPick()">🎯 Point at the element this is about</button>`;
+  modal(shell('Send feedback',
+    `${tgt}
+     <div class="kv" style="grid-template-columns:1fr;margin-top:.7rem">
+     <label class="hint" style="margin:0">Type</label>
+     <select class="mini" id="fbCat"><option>Bug</option><option>Idea</option><option>Question</option></select>
+     <label class="hint" style="margin:.55rem 0 0">Your feedback</label>
+     <textarea id="fbMsg" rows="4" placeholder="What happened, or what would help?" style="padding:.5rem;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:.9rem"></textarea>
+     <p class="hint">Sent as <b>${cu().n}</b> · page: ${fbTarget?fbTarget.page:(TITLES[route]||'—')}. Goes to the dev team’s Feedback inbox.</p></div>`,
+    `<button class="btn ghost sm" onclick="closeModal()">Cancel</button><button class="btn gold sm" onclick="submitFeedback()">Send feedback</button>`),true);
+}
+function submitFeedback(){
+  const cat=document.getElementById('fbCat').value, msg=(document.getElementById('fbMsg').value||'').trim();
+  if(!msg){toast('Add a short note first');return;}
+  const u=cu();
+  feedback.unshift({id:'f'+(feedback.length+1)+'x',when:'Today',from:u.n,role:role,cat,page:fbTarget?fbTarget.page:(TITLES[route]||'—'),msg,status:'New',archived:false,target:fbTarget?fbTarget.label:null,selector:fbTarget?fbTarget.selector:null});
+  fbTarget=null;closeModal();toast('Feedback sent — thank you');render();
+}
+
+/* ---- point-at-element picker (like Claude’s design feedback) ---- */
+function startPick(){
+  closeModal(); pickMode=true;
+  pickHi=document.createElement('div'); pickHi.className='pick-hi'; pickHi.innerHTML='<span class="pick-lbl"></span>'; document.body.appendChild(pickHi);
+  pickBanner=document.createElement('div'); pickBanner.className='pick-banner'; pickBanner.innerHTML='🎯 Click the element your feedback is about · <b>Esc</b> to cancel'; document.body.appendChild(pickBanner);
+  document.addEventListener('mousemove',pickMove,true);
+  document.addEventListener('click',pickClick,true);
+  document.addEventListener('keydown',pickKey,true);
+}
+function endPick(){
+  pickMode=false;
+  document.removeEventListener('mousemove',pickMove,true);
+  document.removeEventListener('click',pickClick,true);
+  document.removeEventListener('keydown',pickKey,true);
+  if(pickHi){pickHi.remove();pickHi=null;} if(pickBanner){pickBanner.remove();pickBanner=null;}
+}
+function pickAt(x,y){
+  for(const el of document.elementsFromPoint(x,y)){
+    if(el.closest('.pick-hi,.pick-banner,.toasts'))continue;
+    if(el===document.body||el===document.documentElement)continue;
+    return el;
+  }
+  return null;
+}
+function pickMove(e){
+  if(!pickMode||!pickHi)return;
+  const el=pickAt(e.clientX,e.clientY);
+  if(!el){pickHi.style.display='none';return;}
+  const r=el.getBoundingClientRect();
+  pickHi.style.display='block';
+  pickHi.style.top=r.top+'px';pickHi.style.left=r.left+'px';pickHi.style.width=r.width+'px';pickHi.style.height=r.height+'px';
+  pickHi.querySelector('.pick-lbl').textContent=describeEl(el).label;
+}
+function pickClick(e){
+  if(!pickMode)return;
+  e.preventDefault();e.stopPropagation();
+  const el=pickAt(e.clientX,e.clientY);
+  const t=el?describeEl(el):null;
+  endPick(); openFeedback(t);
+}
+function pickKey(e){ if(e.key==='Escape'){endPick();openFeedback(fbTarget);} }
+function describeEl(el){
+  const tag=el.tagName.toLowerCase();
+  let text=(el.innerText||el.textContent||'').trim().replace(/\s+/g,' ').slice(0,44);
+  let type='Element';
+  if(el.closest('.nav-item'))type='Nav item';
+  else if(tag==='button'||el.classList.contains('btn'))type='Button';
+  else if(el.classList.contains('link')||tag==='a')type='Link';
+  else if(el.classList.contains('code-chip'))type='SOP code';
+  else if(el.classList.contains('stat-card'))type='Stat card';
+  else if(el.classList.contains('pill'))type='Status pill';
+  else if(tag==='th')type='Column header';
+  else if(tag==='input')type=(el.type==='checkbox'?'Checkbox':'Field');
+  else if(/^h[1-4]$/.test(tag))type='Heading';
+  else if(tag==='td')type='Table cell';
+  else if(tag==='tr')type='Table row';
+  const label=text?`${type}: “${text}”`:`${type} <${tag}>`;
+  return {label,selector:cssPath(el),page:TITLES[route]||'—'};
+}
+function cssPath(el){
+  const parts=[];
+  while(el&&el.nodeType===1&&el!==document.body&&parts.length<5){
+    if(el.id){parts.unshift('#'+el.id);break;}
+    let s=el.tagName.toLowerCase();
+    const cls=[...el.classList].filter(c=>c!=='active'&&!c.startsWith('row-')).slice(0,2);
+    if(cls.length)s+='.'+cls.join('.');
+    const p=el.parentElement;
+    if(p){const sibs=[...p.children].filter(c=>c.tagName===el.tagName);if(sibs.length>1)s+=`:nth-of-type(${sibs.indexOf(el)+1})`;}
+    parts.unshift(s); el=el.parentElement;
+  }
+  return parts.join(' > ');
+}
+
+/* ---------------- Sage + notifications ---------------- */
+const SAGE={
+  'How do I acknowledge an SOP?':{a:'Open the SOP from your <b>Library</b> or dashboard, read it, then click <b>“I have read &amp; understand this.”</b> Your acknowledgment is recorded against that exact version.',c:'Compass — Library'},
+  'What’s the pass mark for training?':{a:'You need <b>80% or higher</b> to pass a knowledge check. You can retake a quiz as many times as you like; your best passing score is kept.',c:'SOP-QMP-001 · Training'},
+  'Which SOP covers change orders?':{a:'That’s <b>SOP-OPS-001 — Prime Contract Change Orders (PCOs / PCCOs)</b>, currently at v3 (effective May 9, 2026).',c:'SOP-OPS-001 · Purpose'},
+  'How are cost codes entered?':{a:'Enter cost codes following Hardaway’s coding standards in the system of record, attach support, and route for review before posting.',c:'SOP-ACC-002 · Procedure'}
+};
+function sageOpen(){
+  modal(shell('Ask Sage <span class="hint" style="font-weight:400">· cites the SOP it answers from</span>',
+    `<div id="sageLog"><div class="sage-msg sage">Hi — I answer questions about Hardaway’s SOPs and always cite my source. Try one:</div></div>
+     <div class="sugg">${Object.keys(SAGE).map(q=>`<button onclick="sageAsk('${q.replace(/'/g,"\\'")}')">${q}</button>`).join('')}</div>
+     <div style="display:flex;gap:.4rem;margin-top:.8rem"><input id="sageIn" placeholder="Type a question…" style="flex:1;padding:.5rem;border:1px solid var(--line);border-radius:8px" onkeydown="if(event.key==='Enter')sageAsk(this.value)"><button class="btn gold sm" onclick="sageAsk(document.getElementById('sageIn').value)">Send</button></div>`,''));
+}
+function sageAsk(q){if(!q)return;const log=document.getElementById('sageLog');
+  log.insertAdjacentHTML('beforeend',`<div class="sage-msg you">${q}</div>`);
+  const hit=SAGE[q]||{a:'I don’t have that in the current SOPs. Try rephrasing, or check the Library — I only answer from published procedures and won’t guess.',c:null};
+  setTimeout(()=>{log.insertAdjacentHTML('beforeend',`<div class="sage-msg sage">${hit.a}${hit.c?`<div class="cite">Source: ${hit.c}</div>`:''}</div>`);log.scrollTop=log.scrollHeight;const i=document.getElementById('sageIn');if(i)i.value='';},220);
+}
+function notifOpen(){
+  const items=[
+    ['🆕','New version published','SOP-OPS-001 v3 is now effective — acknowledgment requested.'],
+    ['✅','Acknowledgment recorded','You acknowledged SOP-ACC-001 v2.'],
+    ['📝','Training assigned','A quiz was added to SOP-FLD-001 — Daily Field Reports.'],
+    ['⚠️','Review due','SOP-FLD-002 is overdue for its periodic review.']];
+  modal(shell('Notifications',
+    items.map(n=>`<div class="notif"><span class="ic">${n[0]}</span><div><b style="font-size:.9rem">${n[1]}</b><div class="hint" style="margin:0">${n[2]}</div></div></div>`).join(''),
+    `<button class="btn ghost sm" onclick="closeModal();toast('All marked read')">Mark all read</button><button class="btn gold sm" onclick="closeModal()">Close</button>`),true);
+}
+
+/* ---------------- boot ---------------- */
+function signIn(){document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';document.getElementById('sageBtn').style.display='inline-flex';render();}
+function signOut(){document.getElementById('app').style.display='none';document.getElementById('sageBtn').style.display='none';document.getElementById('login').style.display='flex';closeModal();}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+</script>
+</body>
+</html>
