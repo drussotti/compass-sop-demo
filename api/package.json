@@ -1,0 +1,9 @@
+{
+  "name": "compass-demo-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Managed API for the Compass demo: durable feedback capture in Azure Table Storage.",
+  "dependencies": {
+    "@azure/data-tables": "^13.2.2"
+  }
+}

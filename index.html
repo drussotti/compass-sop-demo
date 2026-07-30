@@ -265,7 +265,9 @@ let templates = [
 const DEPTS = Object.keys(FAM);
 const ROLES = ['END_USER','ADMIN','DEV'];
 
-let feedback=[
+/* Sample rows. Only used when /api/feedback is unreachable (e.g. the file is
+   opened straight off disk) so the inbox still demonstrates the feature. */
+const FB_SEED=[
   {id:'f1',when:'Jul 21',from:'Dana Ruiz',role:'END_USER',cat:'Bug',page:'Library',msg:'This button didn’t update the counter until I refreshed the page.',status:'New',archived:false,target:'Button: “✓ I have read & understand this”',selector:'.modal-foot > .btn.gold'},
   {id:'f2',when:'Jul 21',from:'Marcus Bell',role:'END_USER',cat:'Idea',page:'Training',msg:'Could we get a reminder email a few days before a required quiz is due?',status:'New',archived:false},
   {id:'f3',when:'Jul 20',from:'Priya Shah',role:'END_USER',cat:'Bug',page:'SOP read',msg:'On my phone the SOP text runs under the header on FLD-001.',status:'New',archived:false},
@@ -274,6 +276,9 @@ let feedback=[
   {id:'f6',when:'Jul 18',from:'(SOP Owner)',role:'ADMIN',cat:'Idea',page:'Template',msg:'Let me clone an existing template instead of uploading a new one.',status:'New',archived:false},
   {id:'f7',when:'Jul 17',from:'Marcus Bell',role:'END_USER',cat:'Bug',page:'Login',msg:'The SSO button spun forever once; local login worked fine.',status:'New',archived:false}
 ];
+let feedback=[];            // real submissions, loaded from /api/feedback
+let fbState='idle';         // idle | loading | live | offline
+let fbMe=fbLoadMe();        // { name, email } remembered in this browser
 let fbSel=new Set(), fbView='active';
 let fbTarget=null, pickMode=false, pickHi=null, pickBanner=null;
 
@@ -322,7 +327,7 @@ function renderNav(){
 }
 const TITLES={dashboard:'Dashboard',library:'Library',training:'Training',sops:'SOP Repository',template:'Master Template',users:'Users',agents:'Agents',feedback:'Feedback'};
 function allowed(){return NAV.filter(s=>s.roles.includes(role)).flatMap(s=>s.items.map(i=>i.r));}
-function go(r){if(!allowed().includes(r))r='dashboard';route=r;note=null;render();}
+function go(r){if(!allowed().includes(r))r='dashboard';route=r;note=null;render();if(r==='feedback')fbLoad(true);}
 function setRole(v){role=v;if(!allowed().includes(route))route='dashboard';selected=new Set();render();}
 function render(){
   if(!allowed().includes(route))route='dashboard';
@@ -525,6 +530,46 @@ function agentsPage(){const A=[['Discrepancy Agent','Changelog diff + whole-libr
     <div class="stat-grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">${A.map(a=>`<div class="stat-card"><b style="color:var(--navy)">${a[0]}</b><p class="hint" style="margin:.35rem 0 .5rem">${a[1]}</p><span class="pill good">Built</span></div>`).join('')}</div>`;
 }
 
+/* ---------------- Feedback: durable storage via /api/feedback ----------------
+   Submissions go to Azure Table Storage through the Static Web App's managed
+   API, so every reviewer's feedback lands in one place the dev can read -- not
+   in the browser they happened to use. Nothing is kept only on their device. */
+const FB_API='/api/feedback';
+function fbLoadMe(){
+  try{const raw=localStorage.getItem('compass_fb_me');return raw?JSON.parse(raw):{name:'',email:''};}
+  catch(e){return {name:'',email:''};}
+}
+function fbSaveMe(name,email){
+  fbMe={name,email};
+  try{localStorage.setItem('compass_fb_me',JSON.stringify(fbMe));}catch(e){}
+}
+function fbAttr(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function fbWhen(f){
+  if(f.when)return f.when;
+  if(!f.createdAt)return '—';
+  const d=new Date(f.createdAt); if(isNaN(d))return '—';
+  return d.toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+}
+async function fbLoad(quiet){
+  if(!quiet){fbState='loading'; if(route==='feedback')render();}
+  try{
+    const r=await fetch(FB_API,{headers:{'Accept':'application/json'}});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const data=await r.json();
+    feedback=Array.isArray(data.items)?data.items:[];
+    fbState='live';
+  }catch(e){
+    if(fbState!=='live'){feedback=FB_SEED.map(x=>({...x})); fbState='offline';}
+  }
+  if(route==='feedback')render();
+}
+async function fbPatch(ids,change){
+  const r=await fetch(FB_API,{method:'PATCH',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ids,...change})});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return (await r.json()).updated;
+}
+
 /* ---------------- Feedback inbox (Dev view) ---------------- */
 function fbCatPill(c){const m={Bug:'#fde2e0;color:#9a2b22',Idea:'#e6effb;color:#1f4e8a',Question:'#eef1f7;color:#3a4a6b'}[c]||'#eef1f7;color:#3a4a6b';return `<span class="pill" style="background:${m}">${c}</span>`;}
 function fbStatPill(s){return s==='Process'?'<span class="pill good">Process</span>':s==='Ignore'?'<span class="pill" style="background:#eceff4;color:#5e6a7b">Ignore</span>':'<span class="pill warn">New</span>';}
@@ -538,11 +583,17 @@ function feedbackPage(){
     <button class="lnk" onclick="fbSel=new Set();render()">Clear</button></div>`:'';
   const rows=list.map(f=>`<tr class="${fbSel.has(f.id)?'row-selected':''}">
       <td><input type="checkbox" ${fbSel.has(f.id)?'checked':''} onclick="fbRow('${f.id}')"></td>
-      <td class="home-meta" style="white-space:nowrap">${f.when}</td>
-      <td>${f.from}<div class="home-meta">${f.role}</div></td>
+      <td class="home-meta" style="white-space:nowrap">${fbWhen(f)}</td>
+      <td>${f.from}<div class="home-meta">${f.email?f.email:(f.role||'')}</div></td>
       <td>${fbCatPill(f.cat)}</td><td class="home-meta">${f.page}</td>
       <td style="max-width:340px">${f.target?`<div class="fb-tag" title="${(f.selector||'').replace(/"/g,'&quot;')}">🎯 ${f.target}</div>`:''}${f.msg}</td><td>${fbStatPill(f.status)}</td></tr>`).join('');
-  return `<h1>Feedback</h1><p class="hint">Everything sent through <b>“✉ Feedback”</b> lands here for the dev team to triage — the 🎯 tag shows the exact element the sender pointed at. Select rows → mark <b>Process</b> or <b>Ignore</b> → export the process list → archive the triaged items to storage.</p>
+  const banner=fbState==='loading'
+    ? `<div class="hint" style="margin:.2rem 0 .6rem">Loading feedback from storage…</div>`
+    : fbState==='offline'
+      ? `<div class="hint" style="margin:.2rem 0 .6rem;color:#9a2b22"><b>Showing sample data.</b> The feedback service isn’t reachable from here, so nothing on this screen is real and new submissions won’t be saved. This works on the deployed site.</div>`
+      : `<div class="hint" style="margin:.2rem 0 .6rem">Live from shared storage — every submission from every reviewer, on any device. <span class="muted">${feedback.length} item(s) total.</span></div>`;
+  return `<h1>Feedback</h1><p class="hint">Everything sent through <b>“✉ Feedback”</b> lands here for the dev team to triage — the 🎯 tag shows the exact element the sender pointed at. Select rows → mark <b>Process</b> or <b>Ignore</b> → export to CSV → archive the triaged items.</p>
+    ${banner}
     <div class="stat-grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr))">
       <div class="stat-card warn"><div class="stat-value">${nNew}</div><div class="stat-label">New</div></div>
       <div class="stat-card good"><div class="stat-value">${nProc}</div><div class="stat-label">Marked process</div></div>
@@ -551,28 +602,43 @@ function feedbackPage(){
     <div class="inline-form">
       <div class="chip-row" style="margin:0"><button class="${fbView==='active'?'active':''}" onclick="fbView='active';fbSel=new Set();render()">Active inbox</button><button class="${fbView==='archived'?'active':''}" onclick="fbView='archived';fbSel=new Set();render()">Archived (storage)</button></div>
       <span style="flex:1"></span>
-      ${fbView==='active'?`<button class="btn ghost sm" onclick="fbExport()">⬇ Export processed (CSV)</button><button class="btn sm gold" onclick="fbArchive()">Archive marked → storage</button>`:''}
+      <button class="btn ghost sm" onclick="fbLoad()">↻ Refresh</button>
+      <button class="btn ghost sm" onclick="fbExport()">⬇ Export CSV</button>
+      ${fbView==='active'?`<button class="btn sm gold" onclick="fbArchive()">Archive marked → storage</button>`:''}
     </div>${bulk}
     <table class="grid"><thead><tr><th style="width:30px"><input type="checkbox" ${all?'checked':''} onclick="fbAll(this.checked)"></th><th>When</th><th>From</th><th>Type</th><th>Page</th><th>Feedback</th><th>Status</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="7" class="muted" style="text-align:center;padding:1.1rem">Nothing here yet.</td></tr>'}</tbody></table>`;
 }
 function fbRow(id){fbSel.has(id)?fbSel.delete(id):fbSel.add(id);render();}
 function fbAll(on){feedback.filter(f=>fbView==='active'?!f.archived:f.archived).forEach(f=>on?fbSel.add(f.id):fbSel.delete(f.id));render();}
-function fbMark(st){const n=fbSel.size;[...fbSel].forEach(id=>{const f=feedback.find(x=>x.id===id);if(f)f.status=st;});fbSel=new Set();toast(`Marked ${n} as ${st}`);render();}
+async function fbMark(st){
+  const ids=[...fbSel]; const n=ids.length; if(!n)return;
+  ids.forEach(id=>{const f=feedback.find(x=>x.id===id);if(f)f.status=st;});
+  fbSel=new Set(); render();
+  if(fbState!=='live'){toast(`Marked ${n} as ${st} (not saved — offline)`);return;}
+  try{await fbPatch(ids,{status:st}); toast(`Marked ${n} as ${st}`);}
+  catch(e){toast('Could not save that change — refreshing'); fbLoad(true);}
+}
 function fbExport(){
-  const rows=feedback.filter(f=>!f.archived&&f.status==='Process');
-  if(!rows.length){toast('Nothing marked “Process” to export yet');return;}
-  const esc=v=>`"${String(v).replace(/"/g,'""')}"`;
-  const csv=[['When','From','Role','Type','Page','Target element','Selector','Status','Feedback'].join(','),
-    ...rows.map(f=>[f.when,f.from,f.role,f.cat,f.page,f.target||'',f.selector||'',f.status,f.msg].map(esc).join(','))].join('\r\n');
-  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  const a=document.createElement('a');a.href=url;a.download='compass-feedback-processed.csv';a.click();URL.revokeObjectURL(url);
-  toast(`Exported ${rows.length} processed item(s) to CSV`);
+  const rows=feedback.filter(f=>fbView==='active'?!f.archived:f.archived);
+  if(!rows.length){toast('Nothing in this view to export');return;}
+  const esc=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  const csv=[['When','From','Email','Viewing as','Type','Page','Target element','Selector','Status','Archived','Feedback'].join(','),
+    ...rows.map(f=>[f.createdAt||f.when,f.from,f.email,f.role,f.cat,f.page,f.target,f.selector,f.status,f.archived?'yes':'no',f.msg].map(esc).join(','))].join('\r\n');
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  const a=document.createElement('a');a.href=url;a.download='compass-feedback.csv';a.click();URL.revokeObjectURL(url);
+  toast(`Exported ${rows.length} item(s) to CSV`);
 }
 function fbArchive(){
   const marked=feedback.filter(f=>!f.archived&&(f.status==='Process'||f.status==='Ignore'));
   if(!marked.length){toast('Nothing marked to archive yet — mark Process or Ignore first');return;}
-  confirmModal('Archive marked feedback?',`Move <b>${marked.length}</b> triaged item(s) (Process + Ignore) out of the active inbox into storage? In the deployed app this writes them to Azure Blob storage; anything still <b>New</b> stays in the inbox.`,()=>{marked.forEach(f=>f.archived=true);fbSel=new Set();closeModal();toast(`Archived ${marked.length} item(s) to storage`);render();},'Archive to storage');
+  const ids=marked.map(f=>f.id);
+  confirmModal('Archive marked feedback?',`Move <b>${marked.length}</b> triaged item(s) (Process + Ignore) out of the active inbox? They stay in Azure Table Storage and remain readable under <b>Archived</b> — anything still <b>New</b> stays in the inbox.`,async()=>{
+    marked.forEach(f=>f.archived=true);fbSel=new Set();closeModal();render();
+    if(fbState!=='live'){toast(`Archived ${ids.length} item(s) (not saved — offline)`);return;}
+    try{await fbPatch(ids,{archived:true});toast(`Archived ${ids.length} item(s)`);}
+    catch(e){toast('Could not save that change — refreshing');fbLoad(true);}
+  },'Archive to storage');
 }
 function openFeedback(target){
   fbTarget = target || null;
@@ -582,19 +648,40 @@ function openFeedback(target){
   modal(shell('Send feedback',
     `${tgt}
      <div class="kv" style="grid-template-columns:1fr;margin-top:.7rem">
-     <label class="hint" style="margin:0">Type</label>
+     <label class="hint" style="margin:0">Your name</label>
+     <input id="fbName" value="${fbAttr(fbMe.name)}" placeholder="So we know who to follow up with" style="padding:.5rem;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:.9rem">
+     <label class="hint" style="margin:.55rem 0 0">Email <span class="muted">(optional)</span></label>
+     <input id="fbEmail" value="${fbAttr(fbMe.email)}" placeholder="you@hardaway.net" style="padding:.5rem;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:.9rem">
+     <label class="hint" style="margin:.55rem 0 0">Type</label>
      <select class="mini" id="fbCat"><option>Bug</option><option>Idea</option><option>Question</option></select>
      <label class="hint" style="margin:.55rem 0 0">Your feedback</label>
      <textarea id="fbMsg" rows="4" placeholder="What happened, or what would help?" style="padding:.5rem;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:.9rem"></textarea>
-     <p class="hint">Sent as <b>${cu().n}</b> · page: ${fbTarget?fbTarget.page:(TITLES[route]||'—')}. Goes to the dev team’s Feedback inbox.</p></div>`,
+     <p class="hint">Page: ${fbTarget?fbTarget.page:(TITLES[route]||'—')} · viewing as ${role}. Saved to the dev team’s shared Feedback inbox. Your name is remembered on this device so you only type it once.</p></div>`,
     `<button class="btn ghost sm" onclick="closeModal()">Cancel</button><button class="btn gold sm" onclick="submitFeedback()">Send feedback</button>`),true);
 }
-function submitFeedback(){
-  const cat=document.getElementById('fbCat').value, msg=(document.getElementById('fbMsg').value||'').trim();
-  if(!msg){toast('Add a short note first');return;}
-  const u=cu();
-  feedback.unshift({id:'f'+(feedback.length+1)+'x',when:'Today',from:u.n,role:role,cat,page:fbTarget?fbTarget.page:(TITLES[route]||'—'),msg,status:'New',archived:false,target:fbTarget?fbTarget.label:null,selector:fbTarget?fbTarget.selector:null});
-  fbTarget=null;closeModal();toast('Feedback sent — thank you');render();
+async function submitFeedback(){
+  const btn=document.querySelector('.modal-foot .btn.gold');
+  const cat=document.getElementById('fbCat').value;
+  const msg=(document.getElementById('fbMsg').value||'').trim();
+  const name=(document.getElementById('fbName').value||'').trim();
+  const email=(document.getElementById('fbEmail').value||'').trim();
+  if(!name){toast('Add your name so we know who to follow up with');document.getElementById('fbName').focus();return;}
+  if(!msg){toast('Add a short note first');document.getElementById('fbMsg').focus();return;}
+  fbSaveMe(name,email);
+  const payload={name,email,cat,role,msg,
+    page:fbTarget?fbTarget.page:(TITLES[route]||'—'),
+    target:fbTarget?fbTarget.label:'',selector:fbTarget?fbTarget.selector:''};
+  if(btn){btn.disabled=true;btn.textContent='Sending…';}
+  try{
+    const r=await fetch(FB_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||('HTTP '+r.status));}
+    const saved=(await r.json()).item;
+    feedback.unshift(saved); fbState='live';
+    fbTarget=null;closeModal();toast('Feedback sent — thank you');render();
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent='Send feedback';}
+    toast('Couldn’t send that — check your connection and try again');
+  }
 }
 
 /* ---- point-at-element picker (like Claude’s design feedback) ---- */
@@ -700,7 +787,7 @@ function notifOpen(){
 }
 
 /* ---------------- boot ---------------- */
-function signIn(){document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';document.getElementById('sageBtn').style.display='inline-flex';render();}
+function signIn(){document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';document.getElementById('sageBtn').style.display='inline-flex';render();fbLoad(true);}
 function signOut(){document.getElementById('app').style.display='none';document.getElementById('sageBtn').style.display='none';document.getElementById('login').style.display='flex';closeModal();}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 </script>
