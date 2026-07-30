@@ -33,6 +33,7 @@ async function table() {
 const clip = (v, n) => (v === null || v === undefined ? '' : String(v)).slice(0, n);
 const CATS = ['Bug', 'Idea', 'Question'];
 const STATUSES = ['New', 'Process', 'Ignore'];
+const SENDER_ROLES = ['ADMIN', 'DEV'];
 
 function toItem(e) {
   return {
@@ -61,6 +62,13 @@ async function list(t) {
 async function save(t, b) {
   const msg = clip(b.msg, 4000).trim();
   const name = clip(b.name, 120).trim();
+  const senderRole = clip(b.role, 20).trim().toUpperCase();
+  // Feedback is an Admin/Dev tool. The demo has no real auth, so this mirrors
+  // the client-side gate rather than enforcing it -- it stops a stale page or a
+  // mis-set role from filing noise, not a determined caller.
+  if (senderRole && !SENDER_ROLES.includes(senderRole)) {
+    const e = new Error('Feedback is limited to Admin and Dev reviewers'); e.status = 403; throw e;
+  }
   if (!msg) { const e = new Error('Feedback text is required'); e.status = 400; throw e; }
   if (!name) { const e = new Error('Your name is required'); e.status = 400; throw e; }
   const now = new Date().toISOString();

@@ -209,7 +209,7 @@
             <option value="END_USER">Regular user</option>
           </select>
         </div>
-        <button class="btn ghost sm" onclick="openFeedback()" title="Send feedback to the team">✉ Feedback</button>
+        <button class="btn ghost sm" id="fbBtn" onclick="openFeedback()" title="Send feedback to the team">✉ Feedback</button>
         <button class="bell" title="Notifications" onclick="notifOpen()">🔔<span class="dot"></span></button>
       </div>
       <div class="demo-strip">Interactive demo — click SOP titles, quizzes, “Read”, the bell, and Ask&nbsp;Sage to see the real pop-ups. Sample data, no server.</div>
@@ -327,12 +327,18 @@ function renderNav(){
 }
 const TITLES={dashboard:'Dashboard',library:'Library',training:'Training',sops:'SOP Repository',template:'Master Template',users:'Users',agents:'Agents',feedback:'Feedback'};
 function allowed(){return NAV.filter(s=>s.roles.includes(role)).flatMap(s=>s.items.map(i=>i.r));}
+/* Feedback is a document-control/platform tool: only Admin and Dev can send it.
+   Regular users read, train and acknowledge -- they aren't reviewing the UX. */
+const FB_SENDER_ROLES=['ADMIN','DEV'];
+function canSendFeedback(){return FB_SENDER_ROLES.includes(role);}
 function go(r){if(!allowed().includes(r))r='dashboard';route=r;note=null;render();if(r==='feedback')fbLoad(true);}
 function setRole(v){role=v;if(!allowed().includes(route))route='dashboard';selected=new Set();render();}
 function render(){
   if(!allowed().includes(route))route='dashboard';
   document.getElementById('rolePick').value=role;
   document.getElementById('pageTitle').textContent=TITLES[route]||'';
+  const fbBtn=document.getElementById('fbBtn');
+  if(fbBtn)fbBtn.style.display=canSendFeedback()?'':'none';
   renderNav();
   const m=document.getElementById('main');
   if(route==='dashboard')m.innerHTML=role==='END_USER'?userHome():adminDash();
@@ -641,6 +647,11 @@ function fbArchive(){
   },'Archive to storage');
 }
 function openFeedback(target){
+  if(!canSendFeedback()){
+    endPick();
+    toast('Feedback is for Admin and Dev reviewers');
+    return;
+  }
   fbTarget = target || null;
   const tgt = fbTarget
     ? `<div class="fb-target"><span class="fb-dot"></span><div style="flex:1"><b style="font-size:.82rem">About this element</b><div class="home-meta">${fbTarget.label}</div><code class="fb-sel">${fbTarget.selector}</code></div><button class="btn ghost sm" onclick="startPick()">Change</button></div>`
@@ -660,6 +671,7 @@ function openFeedback(target){
     `<button class="btn ghost sm" onclick="closeModal()">Cancel</button><button class="btn gold sm" onclick="submitFeedback()">Send feedback</button>`),true);
 }
 async function submitFeedback(){
+  if(!canSendFeedback()){closeModal();toast('Feedback is for Admin and Dev reviewers');return;}
   const btn=document.querySelector('.modal-foot .btn.gold');
   const cat=document.getElementById('fbCat').value;
   const msg=(document.getElementById('fbMsg').value||'').trim();
@@ -686,6 +698,7 @@ async function submitFeedback(){
 
 /* ---- point-at-element picker (like Claude’s design feedback) ---- */
 function startPick(){
+  if(!canSendFeedback()){closeModal();toast('Feedback is for Admin and Dev reviewers');return;}
   closeModal(); pickMode=true;
   pickHi=document.createElement('div'); pickHi.className='pick-hi'; pickHi.innerHTML='<span class="pick-lbl"></span>'; document.body.appendChild(pickHi);
   pickBanner=document.createElement('div'); pickBanner.className='pick-banner'; pickBanner.innerHTML='🎯 Click the element your feedback is about · <b>Esc</b> to cancel'; document.body.appendChild(pickBanner);
